@@ -1,19 +1,89 @@
-import serial
+import sys
 import time
-from glob import glob
+import threading
+import serial
+from serial.tools import list_ports
+from pathlib import Path
+import glob
 
-ports = glob("/dev/serial/by-id/*")
-port = ports[0] if ports else "/dev/ttyACM0"
+BAUD = 115200
 
-ser = serial.Serial(port, 115200, timeout=1)
-time.sleep(2)  # give ESP32 time after reset
+def find_default_port() -> str:
+    # Linux: prefer stable by-id symlink if available
+    if sys.platform.startswith("linux"):
+        by_id = glob.glob("/dev/serial/by-id/*")
+        if by_id:
+            return by_id[0]
+        # fallback
+        for cand in ("/dev/ttyACM0", "/dev/ttyUSB0"):
+            if Path(cand).exists():
+                return cand
 
-def send(cmd: str):
-    ser.write((cmd + "\n").encode("utf-8"))
-    return ser.readline().decode("utf-8", errors="replace").strip()
+    # Windows/macOS/other: pick the first USB-ish serial port
+    ports = list(list_ports.comports())
+    if not ports:
+        raise RuntimeError("No serial ports found. Plug in the ESP32 and try again.")
 
-print("ESP says:", ser.readline().decode().strip())
-print(send("PING"))
-print(send("LED ON"))
-time.sleep(1)
-print(send("LED OFF"))
+    # Heuristic: prefer ports that look like USB serial adapters
+    def score(p):
+        s = (p.description or "").lower() + " " + (p.hwid or "").lower()
+        pref = 0
+        if "usb" in s: pref += 10
+        if "cp210" in s or "silicon labs" in s: pref += 5
+        if "ch340" in s or "wch" in s: pref += 5
+        if "ftdi" in s: pref += 5
+        if "acm" in (p.device or "").lower(): pref += 2
+        return pref
+
+    ports.sort(key=score, reverse=True)
+    return ports[0].device
+
+def open_serial(port: str, baud: int = BAUD) -> serial.Serial:
+    ser = serial.Serial(port, baudrate=baud, timeout=None)
+
+    # Some boards reset when opening the port (DTR/RTS). These are safe on all OSes.
+    try:
+        ser.dtr = False
+        ser.rts = False
+    except Exception:
+        pass
+
+    # Give the ESP a moment to boot after opening/reset
+    time.sleep(1.5)
+    return ser
+
+def reader_loop(ser: serial.Serial):
+    while True:
+        raw = ser.readline()  # blocks until '\n'
+        if not raw:
+            continue
+        line = raw.decode("utf-8", errors="replace").strip()
+        if line:
+            print(f"\nESP32: {line}\n> ", end="", flush=True)
+
+def send_line(ser: serial.Serial, line: str):
+    ser.write((line.strip() + "\n").encode("utf-8"))
+
+def main():
+    port = sys.argv[1] if len(sys.argv) > 1 else find_default_port()
+    print(f"Using port: {port}")
+
+    ser = open_serial(port)
+
+    t = threading.Thread(target=reader_loop, args=(ser,), daemon=True)
+    t.start()
+
+    print("Type commands to send. Ctrl+C to quit.")
+    while True:
+        try:
+            cmd = input("> ").strip()
+            if not cmd:
+                continue
+            send_line(ser, cmd)
+        except KeyboardInterrupt:
+            break
+
+    ser.close()
+
+if __name__ == "__main__":
+    main()
