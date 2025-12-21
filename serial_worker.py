@@ -115,6 +115,7 @@ class SerialWorker:
         self.messages_lock = threading.Lock()
         self.status_lock = threading.Lock()
         self.status = {"ready": False, "armed": False, "win": False, "fail": False}
+        self.msg_counter = 0
         self.running = False
         self.thread: Optional[threading.Thread] = None
 
@@ -160,7 +161,8 @@ class SerialWorker:
 
     def _append_message(self, src: str, text: str):
         with self.messages_lock:
-            self.messages.append({"src": src, "text": text, "ts": time.time()})
+            self.msg_counter += 1
+            self.messages.append({"id": self.msg_counter, "src": src, "text": text, "ts": time.time()})
             if len(self.messages) > MAX_MESSAGES:
                 del self.messages[:-MAX_MESSAGES]
         self._update_status(text)
@@ -185,6 +187,12 @@ class SerialWorker:
     def get_messages(self) -> List[Dict[str, str]]:
         with self.messages_lock:
             return list(self.messages)
+
+    def get_messages_since(self, last_id: int) -> List[Dict[str, str]]:
+        with self.messages_lock:
+            if last_id <= 0:
+                return list(self.messages)
+            return [m for m in self.messages if m.get("id", 0) > last_id]
 
     def close(self):
         self.running = False

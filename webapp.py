@@ -1,4 +1,7 @@
-from flask import Flask, jsonify, render_template_string, request, url_for
+import json
+import time
+
+from flask import Flask, Response, jsonify, render_template_string, request, stream_with_context, url_for
 
 from serial_worker import SerialWorker
 
@@ -85,6 +88,28 @@ def create_app(worker: SerialWorker) -> Flask:
     @app.route("/api/status")
     def api_status():
         return jsonify(worker.get_status())
+
+    @app.route("/api/stream")
+    def api_stream():
+        @stream_with_context
+        def event_stream():
+            last_id = 0
+            heartbeat_at = time.time()
+            while True:
+                new_messages = worker.get_messages_since(last_id)
+                if new_messages:
+                    last_id = new_messages[-1].get("id", last_id)
+                    payload = {"type": "messages", "messages": new_messages, "status": worker.get_status()}
+                    yield f"data: {json.dumps(payload)}\n\n"
+                # periodic heartbeat to keep connection alive and send status
+                now = time.time()
+                if now - heartbeat_at > 10:
+                    heartbeat_at = now
+                    payload = {"type": "status", "status": worker.get_status()}
+                    yield f"data: {json.dumps(payload)}\n\n"
+                time.sleep(0.5)
+
+        return Response(event_stream(), mimetype="text/event-stream")
 
     @app.route("/api/send", methods=["POST"])
     def api_send():

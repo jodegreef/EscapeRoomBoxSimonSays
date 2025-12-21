@@ -1,33 +1,58 @@
-const statusTokens = {
-  ready: "SIMON:READY",
-  armed: "SIMON:ARMED",
-  win: "SIMON:WIN",
-  fail: "SIMON:FAIL",
-};
+let lastId = 0;
 
-async function refresh() {
-  await Promise.all([refreshStatus(), refreshMessages()]);
+function connectStream() {
+  const es = new EventSource("/api/stream");
+  es.onmessage = (evt) => {
+    if (!evt.data) return;
+    try {
+      const payload = JSON.parse(evt.data);
+      handlePayload(payload);
+    } catch (e) {
+      console.error("Bad SSE payload", e);
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    // simple retry after delay
+    setTimeout(connectStream, 2000);
+  };
 }
 
-async function refreshStatus() {
-  const res = await fetch("/api/status");
-  const data = await res.json();
-  setDot("dot-ready", data.ready ? "ok" : "");
-  setDot("dot-armed", data.armed ? "warn" : "");
-  setDot("dot-win", data.win ? "ok" : "");
-  setDot("dot-fail", data.fail ? "bad" : "");
+function handlePayload(payload) {
+  if (payload.type === "messages" && payload.messages) {
+    updateMessages(payload.messages);
+    updateStatus(payload.status);
+  } else if (payload.type === "status" && payload.status) {
+    updateStatus(payload.status);
+  }
 }
 
-async function refreshMessages() {
-  const res = await fetch("/api/messages");
-  const data = await res.json();
-  const lines = data.messages.map((m) => `[${m.src}] ${m.text}`);
-  document.getElementById("log").textContent = lines.join("\n");
+function updateMessages(msgs) {
+  if (!Array.isArray(msgs)) return;
+  const log = document.getElementById("log");
+  const lines = log.textContent ? log.textContent.split("\n") : [];
+  msgs.forEach((m) => {
+    if (typeof m.id === "number") {
+      lastId = Math.max(lastId, m.id);
+    }
+    lines.push(`[${m.src}] ${m.text}`);
+  });
+  const maxLines = 400;
+  const trimmed = lines.slice(-maxLines);
+  log.textContent = trimmed.join("\n");
+}
+
+function updateStatus(status) {
+  if (!status) return;
+  setDot("dot-ready", status.ready ? "ok" : "");
+  setDot("dot-armed", status.armed ? "warn" : "");
+  setDot("dot-win", status.win ? "ok" : "");
+  setDot("dot-fail", status.fail ? "bad" : "");
 }
 
 function setDot(id, cls) {
   const el = document.getElementById(id);
-  el.className = "dot " + cls;
+  if (el) el.className = "dot " + cls;
 }
 
 async function sendCommand(cmd) {
@@ -37,7 +62,6 @@ async function sendCommand(cmd) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cmd }),
   });
-  refresh();
 }
 
 async function sendForm(ev) {
@@ -51,6 +75,5 @@ async function sendForm(ev) {
 }
 
 window.onload = () => {
-  refresh();
-  setInterval(refresh, 1500);
+  connectStream();
 };
