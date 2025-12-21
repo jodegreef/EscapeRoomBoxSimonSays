@@ -18,6 +18,7 @@ def create_app(worker: SerialWorker) -> Flask:
   <script>
     const statusTokens = {
       ready: "SIMON:READY",
+      armed: "SIMON:ARMED",
       win: "SIMON:WIN",
       fail: "SIMON:FAIL",
     };
@@ -26,7 +27,9 @@ def create_app(worker: SerialWorker) -> Flask:
       const last = {};
       messages.forEach(m => { last[m.text] = m.ts; });
       return {
-        ready: !!last[statusTokens.ready],
+        // Armed overrides ready indicator
+        ready: !!last[statusTokens.ready] && !last[statusTokens.armed],
+        armed: !!last[statusTokens.armed],
         win: !!last[statusTokens.win],
         fail: !!last[statusTokens.fail],
       };
@@ -40,6 +43,7 @@ def create_app(worker: SerialWorker) -> Flask:
 
       const stat = computeStatus(data.messages);
       setDot('dot-ready', stat.ready ? 'ok' : '');
+      setDot('dot-armed', stat.armed ? 'warn' : '');
       setDot('dot-win', stat.win ? 'ok' : '');
       setDot('dot-fail', stat.fail ? 'bad' : '');
     }
@@ -81,6 +85,7 @@ def create_app(worker: SerialWorker) -> Flask:
       </div>
       <div class="status-list">
         <div class="status"><span id="dot-ready" class="dot"></span> Ready</div>
+        <div class="status"><span id="dot-armed" class="dot"></span> Simon: Armed</div>
         <div class="status"><span id="dot-win" class="dot"></span> Win</div>
         <div class="status"><span id="dot-fail" class="dot"></span> Fail</div>
       </div>
