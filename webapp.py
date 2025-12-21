@@ -3,10 +3,10 @@ import time
 
 from flask import Flask, Response, jsonify, render_template_string, request, stream_with_context, url_for
 
-from serial_worker import SerialWorker
+from serial_manager import SerialManager
 
 
-def create_app(worker: SerialWorker) -> Flask:
+def create_app(manager: SerialManager) -> Flask:
     app = Flask(__name__)
 
     @app.route("/")
@@ -83,29 +83,29 @@ def create_app(worker: SerialWorker) -> Flask:
 
     @app.route("/api/messages")
     def api_messages():
-        return jsonify({"messages": worker.get_messages()})
+        msgs, _ = manager.get_messages_since({})
+        return jsonify({"messages": msgs})
 
     @app.route("/api/status")
     def api_status():
-        return jsonify(worker.get_status())
+        return jsonify(manager.get_statuses())
 
     @app.route("/api/stream")
     def api_stream():
         @stream_with_context
         def event_stream():
-            last_id = 0
+            last_ids = {}
             heartbeat_at = time.time()
             while True:
-                new_messages = worker.get_messages_since(last_id)
+                new_messages, last_ids = manager.get_messages_since(last_ids)
                 if new_messages:
-                    last_id = new_messages[-1].get("id", last_id)
-                    payload = {"type": "messages", "messages": new_messages, "status": worker.get_status()}
+                    payload = {"type": "messages", "messages": new_messages, "status": manager.get_statuses()}
                     yield f"data: {json.dumps(payload)}\n\n"
                 # periodic heartbeat to keep connection alive and send status
                 now = time.time()
                 if now - heartbeat_at > 10:
                     heartbeat_at = now
-                    payload = {"type": "status", "status": worker.get_status()}
+                    payload = {"type": "status", "status": manager.get_statuses()}
                     yield f"data: {json.dumps(payload)}\n\n"
                 time.sleep(0.5)
 
@@ -113,6 +113,10 @@ def create_app(worker: SerialWorker) -> Flask:
 
     @app.route("/api/send", methods=["POST"])
     def api_send():
+        device = request.args.get("device")
+        worker = manager.get_worker(device)
+        if not worker:
+            return jsonify({"error": "Device not found"}), 404
         data = request.get_json(silent=True) or {}
         cmd = (data.get("cmd") or data.get("command") or "").strip()
         if not cmd:

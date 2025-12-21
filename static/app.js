@@ -1,7 +1,8 @@
 let lastId = 0;
+let es;
 
 function connectStream() {
-  const es = new EventSource("/api/stream");
+  es = new EventSource("/api/stream");
   es.onmessage = (evt) => {
     if (!evt.data) return;
     try {
@@ -21,9 +22,9 @@ function connectStream() {
 function handlePayload(payload) {
   if (payload.type === "messages" && payload.messages) {
     updateMessages(payload.messages);
-    updateStatus(payload.status);
+    updateStatuses(payload.status);
   } else if (payload.type === "status" && payload.status) {
-    updateStatus(payload.status);
+    updateStatuses(payload.status);
   }
 }
 
@@ -35,19 +36,28 @@ function updateMessages(msgs) {
     if (typeof m.id === "number") {
       lastId = Math.max(lastId, m.id);
     }
-    lines.push(`[${m.src}] ${m.text}`);
+    const deviceTag = m.device ? `[${m.device}] ` : "";
+    lines.push(`${deviceTag}[${m.src}] ${m.text}`);
   });
   const maxLines = 400;
   const trimmed = lines.slice(-maxLines);
   log.textContent = trimmed.join("\n");
 }
 
-function updateStatus(status) {
-  if (!status) return;
-  setDot("dot-ready", status.ready ? "ok" : "");
-  setDot("dot-armed", status.armed ? "warn" : "");
-  setDot("dot-win", status.win ? "ok" : "");
-  setDot("dot-fail", status.fail ? "bad" : "");
+function updateStatuses(statuses) {
+  // aggregate: if any device has a flag, show it
+  if (!statuses) return;
+  let agg = { ready: false, armed: false, win: false, fail: false };
+  Object.values(statuses).forEach((s) => {
+    agg.ready = agg.ready || s.ready;
+    agg.armed = agg.armed || s.armed;
+    agg.win = agg.win || s.win;
+    agg.fail = agg.fail || s.fail;
+  });
+  setDot("dot-ready", agg.ready ? "ok" : "");
+  setDot("dot-armed", agg.armed ? "warn" : "");
+  setDot("dot-win", agg.win ? "ok" : "");
+  setDot("dot-fail", agg.fail ? "bad" : "");
 }
 
 function setDot(id, cls) {
