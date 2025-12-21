@@ -18,6 +18,8 @@ BAUD = 115200
 READY_TOKEN = "SIMON:READY"
 DEFAULT_SOUND_FILE = Path(os.environ.get("SIMON_READY_MP3", "overhere.wav"))
 MAX_MESSAGES = 200
+FAIL_TOKEN = "SIMON:FAIL"
+FAIL_SOUND_FILE = Path(os.environ.get("SIMON_FAIL_MP3", "dontangerit.wav"))
 
 
 def parse_env_sound_hooks(raw: str) -> Dict[str, Path]:
@@ -38,7 +40,10 @@ def parse_env_sound_hooks(raw: str) -> Dict[str, Path]:
     return hooks
 
 
-DEFAULT_SOUND_HOOKS: Dict[str, Path] = {READY_TOKEN: DEFAULT_SOUND_FILE}
+DEFAULT_SOUND_HOOKS: Dict[str, Path] = {
+    READY_TOKEN: DEFAULT_SOUND_FILE,
+    FAIL_TOKEN: FAIL_SOUND_FILE,
+}
 ENV_SOUND_HOOKS: Dict[str, Path] = parse_env_sound_hooks(os.environ.get("SIMON_SOUNDS", ""))
 SOUND_HOOKS: Dict[str, Path] = {**DEFAULT_SOUND_HOOKS, **ENV_SOUND_HOOKS}
 
