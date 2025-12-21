@@ -5,8 +5,16 @@ import serial
 from serial.tools import list_ports
 from pathlib import Path
 import glob
+import os
+
+try:
+    from playsound import playsound
+except ImportError:
+    playsound = None
 
 BAUD = 115200
+READY_TOKEN = "SIMON:READY"
+SOUND_FILE = Path(os.environ.get("SIMON_READY_MP3", "overhere.wav"))
 
 def find_default_port() -> str:
     # Linux: prefer stable by-id symlink if available
@@ -60,9 +68,21 @@ def reader_loop(ser: serial.Serial):
         line = raw.decode("utf-8", errors="replace").strip()
         if line:
             print(f"\nESP32: {line}\n> ", end="", flush=True)
+            if line == READY_TOKEN:
+                trigger_ready_sound()
 
 def send_line(ser: serial.Serial, line: str):
     ser.write((line.strip() + "\n").encode("utf-8"))
+
+def trigger_ready_sound():
+    # Play the MP3 in a background thread so serial reading is not blocked
+    if not SOUND_FILE.exists():
+        print(f"(MP3 not found at {SOUND_FILE}. Set SIMON_READY_MP3 to override.)")
+        return
+    if playsound is None:
+        print("(playsound not installed; add it to requirements and pip install to enable audio.)")
+        return
+    threading.Thread(target=playsound, args=(str(SOUND_FILE),), daemon=True).start()
 
 def main():
     port = sys.argv[1] if len(sys.argv) > 1 else find_default_port()
