@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template_string, request
+from flask import Flask, jsonify, render_template_string, request, url_for
 
 from serial_worker import SerialWorker
 
@@ -13,40 +13,119 @@ def create_app(worker: SerialWorker) -> Flask:
 <!doctype html>
 <html>
 <head>
-  <title>Simon Says Serial Console</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 1.5rem; }
-    pre { background: #111; color: #0f0; padding: 1rem; max-height: 60vh; overflow: auto; }
-    form { margin-top: 1rem; }
-    label { display: block; margin-bottom: 0.5rem; }
-  </style>
+  <title>Simon Says Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script>
-    async function refreshMessages() {
+    const statusTokens = {
+      ready: "SIMON:READY",
+      win: "SIMON:WIN",
+      fail: "SIMON:FAIL",
+    };
+
+    function computeStatus(messages) {
+      const last = {};
+      messages.forEach(m => { last[m.text] = m.ts; });
+      return {
+        ready: !!last[statusTokens.ready],
+        win: !!last[statusTokens.win],
+        fail: !!last[statusTokens.fail],
+      };
+    }
+
+    async function refresh() {
       const res = await fetch('/api/messages');
       const data = await res.json();
       const lines = data.messages.map(m => `[${m.src}] ${m.text}`);
       document.getElementById('log').textContent = lines.join('\\n');
+
+      const stat = computeStatus(data.messages);
+      setDot('dot-ready', stat.ready ? 'ok' : '');
+      setDot('dot-win', stat.win ? 'ok' : '');
+      setDot('dot-fail', stat.fail ? 'bad' : '');
     }
-    async function sendCommand(ev) {
-      ev.preventDefault();
-      const cmd = document.getElementById('cmd').value.trim();
+
+    function setDot(id, cls) {
+      const el = document.getElementById(id);
+      el.className = 'dot ' + cls;
+    }
+
+    async function sendCommand(cmd) {
       if (!cmd) return;
       await fetch('/api/send', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({cmd})});
-      document.getElementById('cmd').value = '';
-      refreshMessages();
+      refresh();
     }
-    setInterval(refreshMessages, 1500);
-    window.onload = refreshMessages;
+
+    async function sendForm(ev) {
+      ev.preventDefault();
+      const text = document.getElementById('param-text').value.trim();
+      const mode = document.getElementById('param-mode').value;
+      const flag = document.getElementById('param-flag').checked ? "ON" : "OFF";
+      const cmd = `SET ${mode} ${flag} ${text || "NO_TEXT"}`;
+      await sendCommand(cmd);
+      ev.target.reset();
+    }
+
+    window.onload = () => {
+      refresh();
+      setInterval(refresh, 1500);
+    };
   </script>
 </head>
 <body>
-  <h1>Simon Says Serial Console</h1>
-  <pre id="log"></pre>
-  <form onsubmit="sendCommand(event)">
-    <label>Send command to ESP32:</label>
-    <input id="cmd" type="text" autofocus />
-    <button type="submit">Send</button>
-  </form>
+  <h1>Simon Says Dashboard</h1>
+  <div class="grid">
+    <div class="panel">
+      <div class="flex-between">
+        <h3>Status</h3>
+        <small>Based on recent messages</small>
+      </div>
+      <div class="status-list">
+        <div class="status"><span id="dot-ready" class="dot"></span> Ready</div>
+        <div class="status"><span id="dot-win" class="dot"></span> Win</div>
+        <div class="status"><span id="dot-fail" class="dot"></span> Fail</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Quick Commands</h3>
+      <div class="btn-row">
+        <button onclick="sendCommand('SIMON:ARM')" class="secondary">Arm SimonSays</button>
+        <button onclick="sendCommand('SIMON:DEBUG')">SIMON:DEBUG</button>
+        <button onclick="sendCommand('PLAY_SOUND')" class="secondary">Play Sound</button>
+        <button onclick="sendCommand('LIGHTS ON')">Lights On</button>
+        <button onclick="sendCommand('LIGHTS OFF')">Lights Off</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Command with Parameters</h3>
+      <form onsubmit="sendForm(event)">
+        <label for="param-text">Text</label>
+        <input id="param-text" type="text" placeholder="Enter text payload" />
+
+        <label for="param-mode">Mode</label>
+        <select id="param-mode">
+          <option value="MODE1">MODE1</option>
+          <option value="MODE2">MODE2</option>
+          <option value="MODE3">MODE3</option>
+        </select>
+
+        <label><input id="param-flag" type="checkbox" /> Enable flag</label>
+
+        <div style="margin-top:0.8rem">
+          <button type="submit">Send Command</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="panel" style="grid-column: 1 / -1;">
+      <div class="flex-between">
+        <h3>Serial Log</h3>
+        <small>Live tail</small>
+      </div>
+      <pre id="log"></pre>
+    </div>
+  </div>
 </body>
 </html>
 """
@@ -66,4 +145,3 @@ def create_app(worker: SerialWorker) -> Flask:
         return jsonify({"ok": True})
 
     return app
-

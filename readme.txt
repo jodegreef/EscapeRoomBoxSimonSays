@@ -16,3 +16,8 @@ Windows:
 
 listusb ports:
 py -c "import serial.tools.list_ports as p; print([x.device for x in p.comports()])"
+
+
+
+start game:
+python app.py web

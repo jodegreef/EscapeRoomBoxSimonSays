@@ -1,0 +1,32 @@
+:root {
+  --bg: #0b1021;
+  --panel: #131a33;
+  --accent: #00e0ff;
+  --accent-2: #f8c537;
+  --text: #e8ecff;
+  --muted: #8ea0c7;
+  --success: #35d073;
+  --warn: #f0a500;
+  --danger: #ff5678;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; }
+h1 { margin-top: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.panel { background: var(--panel); border: 1px solid #1f2747; border-radius: 10px; padding: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+.status-list { display: flex; gap: 1rem; flex-wrap: wrap; }
+.status { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 8px; background: rgba(255,255,255,0.04); }
+.dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 12px rgba(0,0,0,0.3); }
+.dot.ok { background: var(--success); box-shadow: 0 0 12px rgba(53,208,115,0.6); }
+.dot.warn { background: var(--warn); box-shadow: 0 0 12px rgba(240,165,0,0.6); }
+.dot.bad { background: var(--danger); box-shadow: 0 0 12px rgba(255,86,120,0.6); }
+button { background: linear-gradient(135deg, var(--accent), #4af5ff); color: #0b1021; border: none; border-radius: 8px; padding: 0.55rem 0.9rem; font-weight: 600; cursor: pointer; box-shadow: 0 6px 15px rgba(0,0,0,0.25); }
+button.secondary { background: linear-gradient(135deg, #334166, #1f2a45); color: var(--text); }
+button:active { transform: translateY(1px); }
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+label { display: block; margin: 0.4rem 0 0.2rem; color: var(--muted); font-size: 0.9rem; }
+input, select { width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #243152; background: #0f162b; color: var(--text); }
+input[type="checkbox"] { width: auto; }
+pre { background: #0f162b; color: #8af7ff; padding: 0.8rem; border-radius: 8px; max-height: 60vh; overflow: auto; border: 1px solid #1f2747; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+small { color: var(--muted); }
