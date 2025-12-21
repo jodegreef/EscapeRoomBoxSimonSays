@@ -15,65 +15,6 @@ def create_app(worker: SerialWorker) -> Flask:
 <head>
   <title>Simon Says Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script>
-    const statusTokens = {
-      ready: "SIMON:READY",
-      armed: "SIMON:ARMED",
-      win: "SIMON:WIN",
-      fail: "SIMON:FAIL",
-    };
-
-    function computeStatus(messages) {
-      const last = {};
-      messages.forEach(m => { last[m.text] = m.ts; });
-      return {
-        // Armed overrides ready indicator
-        ready: !!last[statusTokens.ready] && !last[statusTokens.armed],
-        armed: !!last[statusTokens.armed],
-        win: !!last[statusTokens.win],
-        fail: !!last[statusTokens.fail],
-      };
-    }
-
-    async function refresh() {
-      const res = await fetch('/api/messages');
-      const data = await res.json();
-      const lines = data.messages.map(m => `[${m.src}] ${m.text}`);
-      document.getElementById('log').textContent = lines.join('\\n');
-
-      const stat = computeStatus(data.messages);
-      setDot('dot-ready', stat.ready ? 'ok' : '');
-      setDot('dot-armed', stat.armed ? 'warn' : '');
-      setDot('dot-win', stat.win ? 'ok' : '');
-      setDot('dot-fail', stat.fail ? 'bad' : '');
-    }
-
-    function setDot(id, cls) {
-      const el = document.getElementById(id);
-      el.className = 'dot ' + cls;
-    }
-
-    async function sendCommand(cmd) {
-      if (!cmd) return;
-      await fetch('/api/send', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({cmd})});
-      refresh();
-    }
-
-    async function sendForm(ev) {
-      ev.preventDefault();
-      const text = document.getElementById('param-text').value.trim();
-      const mode = document.getElementById('param-mode').value;
-      const flag = document.getElementById('param-flag').checked ? "ON" : "OFF";
-      const cmd = `SET ${mode} ${flag} ${text || "NO_TEXT"}`;
-      await sendCommand(cmd);
-      ev.target.reset();
-    }
-
-    window.onload = () => {
-      refresh();
-      setInterval(refresh, 1500);
-    };
-  </script>
 </head>
 <body>
   <h1>Simon Says Dashboard</h1>
@@ -131,6 +72,7 @@ def create_app(worker: SerialWorker) -> Flask:
       <pre id="log"></pre>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
 """
@@ -139,6 +81,10 @@ def create_app(worker: SerialWorker) -> Flask:
     @app.route("/api/messages")
     def api_messages():
         return jsonify({"messages": worker.get_messages()})
+
+    @app.route("/api/status")
+    def api_status():
+        return jsonify(worker.get_status())
 
     @app.route("/api/send", methods=["POST"])
     def api_send():

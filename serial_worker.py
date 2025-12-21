@@ -16,9 +16,11 @@ except ImportError:
 
 BAUD = 115200
 READY_TOKEN = "SIMON:READY"
+ARMED_TOKEN = "SIMON:ARMED"
+WIN_TOKEN = "SIMON:WIN"
+FAIL_TOKEN = "SIMON:FAIL"
 DEFAULT_SOUND_FILE = Path(os.environ.get("SIMON_READY_MP3", "overhere.wav"))
 MAX_MESSAGES = 200
-FAIL_TOKEN = "SIMON:FAIL"
 FAIL_SOUND_FILE = Path(os.environ.get("SIMON_FAIL_MP3", "dontangerit.wav"))
 
 
@@ -111,6 +113,8 @@ class SerialWorker:
         self.echo_to_console = echo_to_console
         self.messages: List[Dict[str, str]] = []
         self.messages_lock = threading.Lock()
+        self.status_lock = threading.Lock()
+        self.status = {"ready": False, "armed": False, "win": False, "fail": False}
         self.running = False
         self.thread: Optional[threading.Thread] = None
 
@@ -159,6 +163,24 @@ class SerialWorker:
             self.messages.append({"src": src, "text": text, "ts": time.time()})
             if len(self.messages) > MAX_MESSAGES:
                 del self.messages[:-MAX_MESSAGES]
+        self._update_status(text)
+
+    def _update_status(self, token: str):
+        with self.status_lock:
+            if token == READY_TOKEN:
+                self.status["ready"] = True
+                self.status["armed"] = False
+            elif token == ARMED_TOKEN:
+                self.status["armed"] = True
+                self.status["ready"] = False
+            elif token == WIN_TOKEN:
+                self.status["win"] = True
+            elif token == FAIL_TOKEN:
+                self.status["fail"] = True
+
+    def get_status(self) -> Dict[str, bool]:
+        with self.status_lock:
+            return dict(self.status)
 
     def get_messages(self) -> List[Dict[str, str]]:
         with self.messages_lock:
