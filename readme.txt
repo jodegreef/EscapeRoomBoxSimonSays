@@ -22,3 +22,11 @@ Run the app
   - `python app.py web "COM4:serial,COM5:EscapeRoom"`
 - Raspberry Pi / Linux (override port as needed, custom port via `FLASK_PORT`):
   - `FLASK_PORT=7000 python app.py web "/dev/ttyUSB0:serial"`
+
+
+
+Fixing audio files
+==================
+The files get clipped when playing so we have to add a padding of 0.2 sec at the start:
+sox -r 22050 -c 1 -n pad.wav synth 0.2 sine 300 vol 0.01
+sox pad.wav filetofix.wav fixed.wav
