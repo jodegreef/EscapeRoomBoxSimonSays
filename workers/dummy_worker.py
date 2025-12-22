@@ -27,7 +27,7 @@ class DummyWorker:
         self.thread.start()
 
     def _loop(self):
-        sequence = ["SIMON:READY", "SIMON:ARMED", "SIMON:FAIL", "SIMON:READY", "SIMON:WIN"]
+        sequence = ["DUMMY:READY", "DUMMY:ARMED", "DUMMY:FAIL", "DUMMY:READY", "DUMMY:WIN"]
         idx = 0
         while self.running:
             token = sequence[idx % len(sequence)]
@@ -45,15 +45,15 @@ class DummyWorker:
             if len(self.messages) > 200:
                 del self.messages[:-200]
         with self.status_lock:
-            if text == "SIMON:READY":
+            if text == "DUMMY:READY":
                 self.status["ready"] = True
                 self.status["armed"] = False
-            elif text == "SIMON:ARMED":
+            elif text == "DUMMY:ARMED":
                 self.status["armed"] = True
                 self.status["ready"] = False
-            elif text == "SIMON:WIN":
+            elif text == "DUMMY:WIN":
                 self.status["win"] = True
-            elif text == "SIMON:FAIL":
+            elif text == "DUMMY:FAIL":
                 self.status["fail"] = True
 
     def get_messages(self):

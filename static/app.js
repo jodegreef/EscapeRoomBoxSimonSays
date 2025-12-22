@@ -45,6 +45,7 @@ function updateMessages(msgs) {
 }
 
 function updateStatuses(statuses) {
+  debugger
   // aggregate: if any device has a flag, show it
   if (!statuses) return;
   let agg = { ready: false, armed: false, win: false, fail: false };

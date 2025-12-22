@@ -1,8 +1,8 @@
 import glob
 import os
+import sys
 import threading
 import time
-import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -19,7 +19,7 @@ READY_TOKEN = "SIMON:READY"
 ARMED_TOKEN = "SIMON:ARMED"
 WIN_TOKEN = "SIMON:WIN"
 FAIL_TOKEN = "SIMON:FAIL"
-DEFAULT_SOUND_FILE = Path(os.environ.get("SIMON_READY_MP3", "overhere.wav"))
+DEFAULT_SOUND_FILE = Path(os.environ.get("SIMON_READY_MP3", "letsgo.wav"))
 MAX_MESSAGES = 200
 FAIL_SOUND_FILE = Path(os.environ.get("SIMON_FAIL_MP3", "dontangerit.wav"))
 
@@ -101,7 +101,9 @@ def open_serial(port: str, baud: int = BAUD) -> serial.Serial:
     return ser
 
 
-class SerialWorker:
+class SimonSaysWorker:
+    default_id = "SimonSays"
+
     def __init__(
         self,
         ser: serial.Serial,

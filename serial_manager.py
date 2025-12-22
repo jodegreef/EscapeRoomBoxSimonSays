@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 
-from dummy_worker import DummyWorker
-from serial_worker import SerialWorker, open_serial
+from workers.dummy_worker import DummyWorker
+from workers.serial_worker_simon_says import SimonSaysWorker, open_serial
 
 
 class SerialManager:
@@ -15,14 +15,28 @@ class SerialManager:
         for dev_id, worker_type, port in device_specs:
             if worker_type == "serial":
                 if not port:
-                    raise ValueError(f"Missing port for device {dev_id}")
+                    raise ValueError(f"Missing port for device {dev_id or 'serial worker'}")
                 ser = open_serial(port)
-                worker = SerialWorker(ser, sound_hooks=sound_hooks, echo_to_console=echo_to_console)
+                worker = SimonSaysWorker(ser, sound_hooks=sound_hooks, echo_to_console=echo_to_console)
+                name = dev_id or worker.default_id
+                if name and (name.upper().startswith("COM") or name.startswith("/dev/")):
+                    name = worker.default_id
             elif worker_type == "dummy":
-                worker = DummyWorker(name=dev_id)
+                worker = DummyWorker(name=dev_id or "dummy")
+                name = dev_id or worker.name
             else:
                 raise ValueError(f"Unknown worker type: {worker_type}")
-            self.workers[dev_id] = worker
+
+            unique_name = self._make_unique_name(name)
+            self.workers[unique_name] = worker
+
+    def _make_unique_name(self, base: str) -> str:
+        if base not in self.workers:
+            return base
+        idx = 2
+        while f"{base}_{idx}" in self.workers:
+            idx += 1
+        return f"{base}_{idx}"
 
     def start_all(self):
         for w in self.workers.values():

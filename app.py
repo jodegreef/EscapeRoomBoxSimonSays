@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 from cli import run_cli
 from serial_manager import SerialManager
-from serial_worker import SOUND_HOOKS, SerialWorker, find_default_port, open_serial
+from workers.serial_worker_simon_says import SOUND_HOOKS, SimonSaysWorker, find_default_port, open_serial
 from webapp import create_app
 
 FLASK_DEFAULT_PORT = int(os.environ.get("FLASK_PORT", "5000"))
@@ -30,11 +30,16 @@ def parse_device_specs(arg: str | None) -> List[Tuple[str, str, str | None]]:
             continue
         parts = token.split(":")
         if len(parts) == 1:
-            dev_id = parts[0]
-            specs.append((dev_id, "serial", dev_id))
+            # port only, use default id later
+            port = parts[0]
+            specs.append((None, "serial", port))
         elif len(parts) == 2:
             dev_id, worker_type = parts
-            specs.append((dev_id, worker_type.lower(), None if worker_type.lower() == "dummy" else dev_id))
+            worker_type = worker_type.lower()
+            if worker_type == "dummy":
+                specs.append((dev_id, worker_type, None))
+            else:
+                specs.append((dev_id, worker_type, dev_id))
         else:
             dev_id, worker_type, port = parts[0], parts[1].lower(), parts[2]
             specs.append((dev_id, worker_type, port))
@@ -82,7 +87,7 @@ def main():
         if worker_type != "serial":
             raise RuntimeError("CLI mode supports serial devices only. Use web mode for dummy workers.")
         serial_conn = open_serial(port or find_default_port())
-        worker = SerialWorker(serial_conn, sound_hooks=SOUND_HOOKS, echo_to_console=True)
+        worker = SimonSaysWorker(serial_conn, sound_hooks=SOUND_HOOKS, echo_to_console=True)
 
         try:
             run_cli(worker)

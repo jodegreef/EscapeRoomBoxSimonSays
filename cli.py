@@ -1,4 +1,4 @@
-from serial_worker import SerialWorker
+from workers.serial_worker_simon_says import SimonSaysWorker as SerialWorker
 
 
 def run_cli(worker: SerialWorker):
@@ -12,4 +12,3 @@ def run_cli(worker: SerialWorker):
             worker.send_line(cmd)
         except KeyboardInterrupt:
             break
-
