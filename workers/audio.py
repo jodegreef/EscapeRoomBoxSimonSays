@@ -13,11 +13,11 @@ if "AUDIO_DEVICE" in os.environ:
 _initialized = False
 _failed = False
 _cache: Dict[Path, pygame.mixer.Sound] = {}
-_silence_sound: Optional[pygame.mixer.Sound] = None
+_preroll_sound: Optional[pygame.mixer.Sound] = None
 
 
 def init_audio():
-    global _initialized, _failed, _silence_sound
+    global _initialized, _failed, _preroll_sound
     if _initialized or _failed:
         return
     try:
@@ -26,7 +26,7 @@ def init_audio():
         pygame.mixer.pre_init(frequency=freq, size=-16, channels=2, buffer=buf)
         pygame.init()
         pygame.mixer.init()
-        _silence_sound = _make_silence_sound(freq)
+        _preroll_sound = _load_pad_sound() or _make_silence_sound(freq)
         _initialized = True
     except Exception as e:
         _failed = True
@@ -46,8 +46,8 @@ def play_sound_file(path: Path):
             snd = pygame.mixer.Sound(str(path))
             _cache[path] = snd
         channel = pygame.mixer.find_channel(True)
-        if _silence_sound:
-            channel.play(_silence_sound)
+        if _preroll_sound:
+            channel.play(_preroll_sound)
             channel.queue(snd)
         else:
             channel.play(snd)
@@ -66,5 +66,19 @@ def _make_silence_sound(freq: int) -> Optional[pygame.mixer.Sound]:
         return pygame.mixer.Sound(buffer=buf)
     except Exception as e:
         print(f"(Could not create silence pad: {e})")
+        return None
+
+
+def _load_pad_sound() -> Optional[pygame.mixer.Sound]:
+    pad_path = os.environ.get("AUDIO_PAD_FILE", "pad.wav")
+    if not pad_path:
+        return None
+    p = Path(pad_path)
+    if not p.exists():
+        return None
+    try:
+        return pygame.mixer.Sound(str(p))
+    except Exception as e:
+        print(f"(Could not load pad file {pad_path}: {e})")
         return None
 
