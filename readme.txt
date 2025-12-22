@@ -1,24 +1,19 @@
-create new venv:
-python -m venv .venv
+Setup
+=====
+- Create venv: `python -m venv .venv`
+- Activate (Linux): `source ./.venv/bin/activate`
+- Activate (Windows): `.venv\Scripts\activate`
+- Install deps: `pip install -r requirements.txt`
 
-activate it (linux):
-source ./.venv/bin/activate
+Find Ports (Windows)
+====================
+- List USB serial ports:
+  `py -c "import serial.tools.list_ports as p; print([x.device for x in p.comports()])"`
 
-activate it (windows):
-.venv\Scripts\activate  
-
-
-pip install -r requirements.txt
-
-
-
-Windows: 
-
-listusb ports:
-py -c "import serial.tools.list_ports as p; print([x.device for x in p.comports()])"
-
-
-
-start game:
-python app.py web COM4:serial,dummy1:dummy
-python app.py web "COM4:serial,COM5:EscapeRoom"
+Run the app
+===========
+- Windows examples:
+  - `python app.py web COM4:serial,dummy1:dummy`
+  - `python app.py web "COM4:serial,COM5:EscapeRoom"`
+- Raspberry Pi (override port if needed):
+  - `FLASK_PORT=7000 python app.py web "/dev/ttyUSB0:serial"`

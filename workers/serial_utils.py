@@ -75,7 +75,12 @@ def play_sound_file(path: Path):
     # Prefer aplay on Linux
     if sys.platform.startswith("linux") and shutil.which("aplay"):
         try:
-            subprocess.Popen(["aplay", "-q", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Force format to avoid negotiation delays; best with PCM s16le WAVs
+            subprocess.Popen(
+                ["aplay", "-q", "-f", "cd", "-t", "wav", str(path)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             return
         except Exception as e:
             print(f"(aplay failed: {e})")
