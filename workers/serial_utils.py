@@ -78,7 +78,21 @@ def play_sound_file(path: Path):
         if path.suffix.lower() == ".wav" and shutil.which("aplay"):
             try:
                 subprocess.Popen(
-                    ["aplay", "-q", "-D", "default", "-f", "S16_LE", "-r", "44100", "-c", "2", str(path)],
+                    [
+                        "aplay",
+                        "-q",
+                        "-D",
+                        "default",
+                        "-f",
+                        "S16_LE",
+                        "-r",
+                        "44100",
+                        "-c",
+                        "2",
+                        "--buffer-size=2048",
+                        "--period-size=1024",
+                        str(path),
+                    ],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
