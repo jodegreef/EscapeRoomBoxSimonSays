@@ -72,18 +72,41 @@ def play_sound_file(path: Path):
         print(f"(Sound file not found at {path})")
         return
 
-    # Prefer aplay on Linux
-    if sys.platform.startswith("linux") and shutil.which("aplay"):
-        try:
-            # Force format to avoid negotiation delays; best with PCM s16le WAVs
-            subprocess.Popen(
-                ["aplay", "-q", "-f", "cd", "-t", "wav", str(path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            return
-        except Exception as e:
-            print(f"(aplay failed: {e})")
+    # Prefer fast CLI players on Linux
+    if sys.platform.startswith("linux"):
+        # WAV via aplay (force format to reduce startup negotiation)
+        if path.suffix.lower() == ".wav" and shutil.which("aplay"):
+            try:
+                subprocess.Popen(
+                    ["aplay", "-q", "-D", "default", "-f", "S16_LE", "-r", "44100", "-c", "2", str(path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return
+            except Exception as e:
+                print(f"(aplay failed: {e})")
+        # MP3 via mpg123 if available
+        if path.suffix.lower() == ".mp3" and shutil.which("mpg123"):
+            try:
+                subprocess.Popen(
+                    ["mpg123", "-q", str(path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return
+            except Exception as e:
+                print(f"(mpg123 failed: {e})")
+        # FFplay fallback if present (handles many formats)
+        if shutil.which("ffplay"):
+            try:
+                subprocess.Popen(
+                    ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", str(path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return
+            except Exception as e:
+                print(f"(ffplay failed: {e})")
 
     try:
         from playsound import playsound  # local import to avoid hard dependency
