@@ -1,6 +1,4 @@
 import glob
-import shutil
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -61,75 +59,3 @@ def open_serial(port: str, baud: int = BAUD) -> serial.Serial:
     time.sleep(1.5)
     return ser
 
-
-def play_sound_file(path: Path):
-    """
-    Fire-and-forget audio playback.
-    On Linux, prefer 'aplay' for fast WAV playback.
-    Falls back to playsound if available.
-    """
-    if not path.exists():
-        print(f"(Sound file not found at {path})")
-        return
-
-    # Prefer fast CLI players on Linux
-    if sys.platform.startswith("linux"):
-        # WAV via aplay (force format to reduce startup negotiation)
-        if path.suffix.lower() == ".wav" and shutil.which("aplay"):
-            try:
-                subprocess.Popen(
-                    [
-                        "aplay",
-                        "-q",
-                        "-D",
-                        "default",
-                        "-f",
-                        "S16_LE",
-                        "-r",
-                        "44100",
-                        "-c",
-                        "2",
-                        "--buffer-size=2048",
-                        "--period-size=1024",
-                        str(path),
-                    ],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                return
-            except Exception as e:
-                print(f"(aplay failed: {e})")
-        # MP3 via mpg123 if available
-        if path.suffix.lower() == ".mp3" and shutil.which("mpg123"):
-            try:
-                subprocess.Popen(
-                    ["mpg123", "-q", str(path)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                return
-            except Exception as e:
-                print(f"(mpg123 failed: {e})")
-        # FFplay fallback if present (handles many formats)
-        if shutil.which("ffplay"):
-            try:
-                subprocess.Popen(
-                    ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", str(path)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                return
-            except Exception as e:
-                print(f"(ffplay failed: {e})")
-
-    try:
-        from playsound import playsound  # local import to avoid hard dependency
-    except Exception:
-        print("(playsound not installed; install playsound or provide aplay on Linux.)")
-        return
-
-    try:
-        playsound(str(path), block=False)
-    except TypeError:
-        # some playsound versions ignore block kwarg
-        subprocess.Popen([sys.executable, "-c", f"from playsound import playsound; playsound(r'''{str(path)}''')"])

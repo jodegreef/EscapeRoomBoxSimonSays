@@ -6,7 +6,12 @@ from typing import Dict, List, Optional
 
 import serial
 
-from workers.serial_utils import BAUD, play_sound_file
+from workers.serial_utils import BAUD
+
+try:
+    from playsound import playsound
+except ImportError:
+    playsound = None
 
 READY_TOKEN = "SIMON:READY"
 ARMED_TOKEN = "SIMON:ARMED"
@@ -94,8 +99,13 @@ class SimonSaysWorker:
         self._play_sound_file(path)
 
     def _play_sound_file(self, path: Path):
-        # Play audio without blocking the reader loop
-        threading.Thread(target=play_sound_file, args=(path,), daemon=True).start()
+        if not path.exists():
+            print(f"(Sound file not found at {path}. Check SIMON_SOUNDS or SIMON_READY_MP3.)")
+            return
+        if playsound is None:
+            print("(playsound not installed; add it to requirements and pip install to enable audio.)")
+            return
+        threading.Thread(target=playsound, args=(str(path),), daemon=True).start()
 
     def _append_message(self, src: str, text: str):
         with self.messages_lock:
