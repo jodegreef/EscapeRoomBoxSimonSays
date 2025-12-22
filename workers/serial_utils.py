@@ -1,4 +1,6 @@
 import glob
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -58,3 +60,34 @@ def open_serial(port: str, baud: int = BAUD) -> serial.Serial:
     # Give the ESP a moment to boot after opening/reset
     time.sleep(1.5)
     return ser
+
+
+def play_sound_file(path: Path):
+    """
+    Fire-and-forget audio playback.
+    On Linux, prefer 'aplay' for fast WAV playback.
+    Falls back to playsound if available.
+    """
+    if not path.exists():
+        print(f"(Sound file not found at {path})")
+        return
+
+    # Prefer aplay on Linux
+    if sys.platform.startswith("linux") and shutil.which("aplay"):
+        try:
+            subprocess.Popen(["aplay", "-q", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except Exception as e:
+            print(f"(aplay failed: {e})")
+
+    try:
+        from playsound import playsound  # local import to avoid hard dependency
+    except Exception:
+        print("(playsound not installed; install playsound or provide aplay on Linux.)")
+        return
+
+    try:
+        playsound(str(path), block=False)
+    except TypeError:
+        # some playsound versions ignore block kwarg
+        subprocess.Popen([sys.executable, "-c", f"from playsound import playsound; playsound(r'''{str(path)}''')"])
