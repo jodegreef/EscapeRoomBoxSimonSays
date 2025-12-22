@@ -13,20 +13,16 @@ try:
 except ImportError:
     playsound = None
 
-READY_TOKEN = "SIMON:READY"
-ARMED_TOKEN = "SIMON:ARMED"
-WIN_TOKEN = "SIMON:WIN"
-FAIL_TOKEN = "SIMON:FAIL"
-DEFAULT_SOUND_FILE = Path(os.environ.get("SIMON_READY_MP3", "letsgo.wav"))
+READY_TOKEN = "ESCAPE:READY"
+ARMED_TOKEN = "ESCAPE:ARMED"
+WIN_TOKEN = "ESCAPE:WIN"
+FAIL_TOKEN = "ESCAPE:FAIL"
+DEFAULT_SOUND_FILE = Path(os.environ.get("ESCAPE_READY_MP3", "letsgo.wav"))
 MAX_MESSAGES = 200
-FAIL_SOUND_FILE = Path(os.environ.get("SIMON_FAIL_MP3", "dontangerit.wav"))
+FAIL_SOUND_FILE = Path(os.environ.get("ESCAPE_FAIL_MP3", "dontangerit.wav"))
 
 
 def parse_env_sound_hooks(raw: str) -> Dict[str, Path]:
-    """
-    Parse SIMON_SOUNDS env var of the form:
-    TOKEN1=path/to/file.mp3;TOKEN2=another.wav
-    """
     hooks: Dict[str, Path] = {}
     for pair in raw.split(";"):
         pair = pair.strip()
@@ -44,12 +40,12 @@ DEFAULT_SOUND_HOOKS: Dict[str, Path] = {
     READY_TOKEN: DEFAULT_SOUND_FILE,
     FAIL_TOKEN: FAIL_SOUND_FILE,
 }
-ENV_SOUND_HOOKS: Dict[str, Path] = parse_env_sound_hooks(os.environ.get("SIMON_SOUNDS", ""))
+ENV_SOUND_HOOKS: Dict[str, Path] = parse_env_sound_hooks(os.environ.get("ESCAPE_SOUNDS", ""))
 SOUND_HOOKS: Dict[str, Path] = {**DEFAULT_SOUND_HOOKS, **ENV_SOUND_HOOKS}
 
 
-class SimonSaysWorker:
-    default_id = "SimonSays"
+class EscapeRoomWorker:
+    default_id = "EscapeRoom"
 
     def __init__(
         self,
@@ -84,7 +80,7 @@ class SimonSaysWorker:
             if not line:
                 continue
             if self.echo_to_console:
-                print(f"\nESP32: {line}\n> ", end="", flush=True)
+                print(f"\nESCAPE ESP32: {line}\n> ", end="", flush=True)
             self._trigger_sound_for_token(line)
             self._append_message("ESP32", line)
 
@@ -99,9 +95,8 @@ class SimonSaysWorker:
         self._play_sound_file(path)
 
     def _play_sound_file(self, path: Path):
-        # Play the MP3/WAV in a background thread so serial reading is not blocked
         if not path.exists():
-            print(f"(Sound file not found at {path}. Check SIMON_SOUNDS or SIMON_READY_MP3.)")
+            print(f"(Sound file not found at {path}. Check ESCAPE_SOUNDS or ESCAPE_READY_MP3.)")
             return
         if playsound is None:
             print("(playsound not installed; add it to requirements and pip install to enable audio.)")

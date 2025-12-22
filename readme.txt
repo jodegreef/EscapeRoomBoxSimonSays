@@ -21,3 +21,4 @@ py -c "import serial.tools.list_ports as p; print([x.device for x in p.comports(
 
 start game:
 python app.py web COM4:serial,dummy1:dummy
+python app.py web "COM4:serial,COM5:EscapeRoom"

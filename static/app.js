@@ -45,18 +45,21 @@ function updateMessages(msgs) {
 }
 
 function updateStatuses(statuses) {
-  debugger
-  // aggregate: if any device has a flag, show it
   if (!statuses) return;
-  let agg = { ready: false, armed: false, win: false, fail: false };
-  Object.values(statuses).forEach((s) => {
+  // aggregate ready/win/fail across all devices, but only arm indicator for SimonSays
+  let agg = { ready: false, win: false, fail: false };
+  let simonArmed = false;
+  Object.entries(statuses).forEach(([device, s]) => {
+    const name = (device || "").toLowerCase();
+    if (name.includes("simon")) {
+      if (s.armed) simonArmed = true;
+    }
     agg.ready = agg.ready || s.ready;
-    agg.armed = agg.armed || s.armed;
     agg.win = agg.win || s.win;
     agg.fail = agg.fail || s.fail;
   });
   setDot("dot-ready", agg.ready ? "ok" : "");
-  setDot("dot-armed", agg.armed ? "warn" : "");
+  setDot("dot-armed", simonArmed ? "warn" : "");
   setDot("dot-win", agg.win ? "ok" : "");
   setDot("dot-fail", agg.fail ? "bad" : "");
 }

@@ -1,7 +1,9 @@
 from typing import Dict, List, Optional, Tuple
 
 from workers.dummy_worker import DummyWorker
-from workers.serial_worker_simon_says import SimonSaysWorker, open_serial
+from workers.serial_worker_escape_room import EscapeRoomWorker
+from workers.serial_worker_simon_says import SimonSaysWorker
+from workers.serial_utils import open_serial
 
 
 class SerialManager:
@@ -13,7 +15,8 @@ class SerialManager:
         """
         self.workers: Dict[str, object] = {}
         for dev_id, worker_type, port in device_specs:
-            if worker_type == "serial":
+            wt = worker_type.lower()
+            if wt in ("serial", "simon", "simonsays"):
                 if not port:
                     raise ValueError(f"Missing port for device {dev_id or 'serial worker'}")
                 ser = open_serial(port)
@@ -21,7 +24,15 @@ class SerialManager:
                 name = dev_id or worker.default_id
                 if name and (name.upper().startswith("COM") or name.startswith("/dev/")):
                     name = worker.default_id
-            elif worker_type == "dummy":
+            elif wt in ("escape", "escaperoom"):
+                if not port:
+                    raise ValueError(f"Missing port for device {dev_id or 'escape worker'}")
+                ser = open_serial(port)
+                worker = EscapeRoomWorker(ser, sound_hooks=sound_hooks, echo_to_console=echo_to_console)
+                name = dev_id or worker.default_id
+                if name and (name.upper().startswith("COM") or name.startswith("/dev/")):
+                    name = worker.default_id
+            elif wt == "dummy":
                 worker = DummyWorker(name=dev_id or "dummy")
                 name = dev_id or worker.name
             else:

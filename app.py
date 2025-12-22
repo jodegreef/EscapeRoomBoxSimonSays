@@ -4,7 +4,8 @@ from typing import List, Tuple
 
 from cli import run_cli
 from serial_manager import SerialManager
-from workers.serial_worker_simon_says import SOUND_HOOKS, SimonSaysWorker, find_default_port, open_serial
+from workers.serial_utils import find_default_port, open_serial
+from workers.serial_worker_simon_says import SOUND_HOOKS, SimonSaysWorker
 from webapp import create_app
 
 FLASK_DEFAULT_PORT = int(os.environ.get("FLASK_PORT", "5000"))
@@ -15,6 +16,7 @@ def parse_device_specs(arg: str | None) -> List[Tuple[str, str, str | None]]:
     Parse device specs of the form:
       - "COM3" -> device id COM3 using serial worker on port COM3
       - "game:serial:COM4" -> device id "game", serial worker on COM4
+      - "escape1:EscapeRoom:COM5" -> device id "escape1", EscapeRoom worker on COM5
       - "dummy1:dummy" -> device id "dummy1" using dummy worker
     Multiple specs separated by commas.
     """
